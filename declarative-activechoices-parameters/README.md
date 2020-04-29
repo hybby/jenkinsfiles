@@ -4,16 +4,18 @@ There's very little documentation on how to configure [Active Choices](https://p
 
 This Jenkinsfile services as self-documentation of all the trial-and-error I've been through.
 
+This is useful when you have a job that people tend to interact with where not all parameters are relevant to all run-modes.
+
 ## What does it look like?
-The default selections for `ACTION_ONE` show a limited number of `OPTIONS` (just one)
+The default selections for `ACTION_ONE` show a limited number of `OPTION`s (just one)
 
 ![Limited Choices](img/01-action-one.png)
 
-Changing the ACTIONS box causes the page to refresh, and shows more OPTIONS as a result:
+Changing the `ACTION` parameter causes the page to refresh, and `OPTION` now shows more entries as a result:
 
 ![More Choices](img/02-action-two.png)
 
-The "filter" option allows dropdowns to be filtered by a text string...
+The "filter box" on the right allows dropdowns to be filtered by a text string...
 
 ![Filter](img/03-filter.png)
 ![Filter Results](img/04-select.png)
