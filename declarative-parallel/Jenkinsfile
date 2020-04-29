@@ -1,0 +1,94 @@
+// ----------------------------------------------------------------------------
+// Jenkinsfile Declarative Pipeline: Parallel Stages From A List of Groovy Maps
+// ----------------------------------------------------------------------------
+
+// A list of services, nested action types, and config for each
+def SERVICES = [
+  "service-1": [
+    "ACTION_TYPE_ONE": [ "ConfigOne": "foo", "ConfigTwo": "bar" ],
+    "ACTION_TYPE_TWO": [ "ConfigOne": "baz", "ConfigTwo": "qux" ],
+  ],
+  "service-2": [
+    "ACTION_TYPE_ONE": [ "ConfigOne": "quux", "ConfigTwo": "garply" ],
+    "ACTION_TYPE_TWO": [ "ConfigOne": "waldo", "ConfigTwo": "fred" ],
+  ]
+]
+
+// Generate a Jenkins pipeline stage for each item in the SERVICES map
+def parallelStagesMap = SERVICES.collectEntries {
+    [ "${it}": generateStage(it) ]
+}
+
+// Build each stage in the same manner
+def generateStage(service) {
+    def service_name = service.key
+    return {
+        stage("Service: ${service_name}") {
+            config_one = service.value[env.ACTION]['ConfigOne']
+            config_two = service.value[env.ACTION]['ConfigTwo']
+
+            echo "Running steps for action '${env.ACTION}', service '${service_name}'"
+            sh( script: """
+                    echo "Action: ${env.ACTION}"    && \
+                    echo "Service: ${service_name}" && \
+                    echo "ConfigOne: ${config_one}" && \
+                    echo "ConfigTwo: ${config_two}"
+                """
+            )
+        }
+    }
+}
+
+pipeline {
+    agent any
+
+    environment {
+        ENV_FOO = 'SOME_ENVIRONMENT_VARIABLE'
+    }
+
+    parameters {
+        choice(
+            name: 'ACTION',
+            description: 'Type of action to take',
+            choices: [
+                'ACTION_TYPE_ONE',
+                'ACTION_TYPE_TWO'
+            ]
+        )
+    }
+
+    // ------------------------------------
+    // Uncomment to use cron-style scheduled executions with set parameters
+    // Requires: https://github.com/jenkinsci/parameterized-scheduler-plugin
+    // ------------------------------------
+    // triggers {
+    //     parameterizedCron('''
+    //         # do ACTION_TYPE_ONE on all serivces at midnight-ish on every weekday.
+    //         H 0 * * 1-5 % ACTION=ACTION_TYPE_ONE
+    //     ''')
+    // }
+
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                deleteDir()
+            }
+        }
+        stage('Before Parallel Stages Stage') {
+            steps {
+                echo "Some stage that does stuff before kicking off parallel stages"
+            }
+        }
+        stage('Perform actions for all services') {
+            steps {
+                script {
+                    // Put a nice job description about the action we're performing
+                    currentBuild.description = "${env.ACTION}"
+
+                    // Generate a list of paralell steps from the map of services
+                    parallel parallelStagesMap
+                }
+            }
+        }
+    }
+}
