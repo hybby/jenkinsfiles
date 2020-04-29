@@ -1,0 +1,108 @@
+// ----------------------------------------------------------------------------
+// Jenkinsfile Declarative Pipeline: ActiveChoices Parameters
+// Requires: https://plugins.jenkins.io/uno-choice/
+// ----------------------------------------------------------------------------
+Map SERVICES = [
+    'service-one': 'some-value',
+    'service-two': 'some-other-value',
+]
+
+// In a declarative pipeline, ActiveChoiceParameters need defined outside of the main pipeline.
+properties([
+    parameters([
+        // An ActiveChoices Parameter requires that you return a ["quoted", "list", "of-strings"]
+        [
+            $class: 'ChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Choose an action',
+            name: 'SERVICE',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [], sandbox: true,
+                    script: 'return ["Error returning services"]'
+                ],
+                script: [
+                    classpath: [], sandbox: true,
+                    script: "return " + SERVICES.keySet().sort().collect{ "'$it'" }.toListString()
+                ]
+            ]
+        ],
+        // Static list of ACTIONs
+        [
+            $class: 'ChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Choose an action',
+            name: 'ACTION',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [], sandbox: true,
+                    script: 'return ["Error returning actions"]'
+                ],
+                script: [
+                    classpath: [], sandbox: true, script:
+                    """
+                    return [
+                        'ACTION_ONE',
+                        'ACTION_TWO'
+                    ]
+                    """
+                ]
+            ]
+        ],
+        // Refresh options when SERVICE or ACTION changes (just to demonstrate multiple referencedParameters)
+        [
+            $class: 'CascadeChoiceParameter',
+            referencedParameters: 'ACTION,SERVICE',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Choose an option',
+            filterable: true,
+            name: 'OPTION',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [], sandbox: true,
+                    script: 'return ["Error returning options"]'
+                ],
+                script: [
+                    classpath: [], sandbox: true, script:
+                    """
+                    if (ACTION.equals('ACTION_ONE')) {
+                        return [
+                          'OPTION_ONE',
+                        ]
+                    } else {
+                        return [
+                          'OPTION_ONE',
+                          'OPTION_TWO',
+                          'OPTION_THREE',
+                          'OPTION_FOUR'
+                        ]
+                    }
+                    """
+                ]
+            ]
+        ]
+    ])
+])
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                deleteDir()
+            }
+        }
+        stage('Output') {
+            steps {
+                echo "Service Name: ${env.SERVICE}"
+                echo "Service Value: ${SERVICES[env.SERVICE]}"
+                echo "Action: ${env.ACTION}"
+                echo "Option: ${env.OPTION}"
+            }
+        }
+    }
+}
